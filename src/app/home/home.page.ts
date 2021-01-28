@@ -1,19 +1,29 @@
 import { Component } from '@angular/core';
-import { AlertController, ToastController } from '@ionic/angular';
+import { ActionSheetController, AlertController, ToastController } from '@ionic/angular';
+
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
 })
 export class HomePage {
+  key_storage = 'taskDb';
 
   tarefas: any[] = [
     { name: "Estudar Ionic", done: false },
-    { name: "Estudar Inglês",  done: false },
-    { name: "Continuar Guia de Estudos",  done: false },
+    { name: "Estudar Inglês",  done: false},
+    { name: "Continuar Guia de Estudos",  done: false},
   ]
 
-  constructor(private alertCtrl: AlertController, private toastCtrl: ToastController) { }
+  constructor(private alertCtrl: AlertController,
+              private toastCtrl: ToastController, 
+              private actStCtrl: ActionSheetController) {
+      let tasksJson = localStorage.getItem(this.key_storage);
+      
+      if (tasksJson!='[]'){
+        this.tarefas = JSON.parse(tasksJson)
+      }
+   }
 
   async novaTarefa() {
     const alert = await this.alertCtrl.create({
@@ -59,7 +69,7 @@ export class HomePage {
       return
     }
 
-    let task = { name: newTask, done: false }
+    let task = { name: newTask, done: false}
     this.tarefas.push(task)
 
     this.updateLocalStorege();
@@ -70,12 +80,47 @@ export class HomePage {
     this.novaTarefa()
   }
 
-  removeTask(task) {
-    console.log('removeTask ' + task)
-  }
+  removeTask(task : any, id :any) {        
+    document.getElementById('task' + id).setAttribute("class", "animate__animated animate__fadeOutDown");  
+    //Necessário um timer antes de remover da lista, para dar o tempo da animação da div
+    let time =  setTimeout(() => {
+      this.tarefas = this.tarefas.filter(taskArray=> taskArray != task)
+      this.updateLocalStorege()
+    }, 500)
 
+  }
 
   updateLocalStorege(){
-    localStorage.setItem('taskDb', JSON.stringify(this.tarefas));
+    localStorage.setItem(this.key_storage, JSON.stringify(this.tarefas));
   }
+
+  openActions(task){
+    console.log(task)
+    this.presentActionSheet(task)
+  }
+
+  async presentActionSheet(task: any) {
+    const actionSheet = await this.actStCtrl.create({
+      header: 'O que deseja fazer?',
+      cssClass: 'my-custom-class',
+      buttons: [{
+        text: task.done ? 'Desmarcar' : 'Marcar' ,        
+        icon: task.done ?  'arrow-redo': 'arrow-undo' ,
+        handler: () => {
+          task.done = !task.done
+          this.updateLocalStorege();
+        }
+      }, {
+        text: 'Cancelar',
+        icon: 'close',
+        role: 'cancel',
+        handler: () => {
+          console.log('Cancel clicked');
+        }
+      }]
+    });
+    await actionSheet.present();
+  }
+
+
 }
