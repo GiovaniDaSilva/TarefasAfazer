@@ -9,18 +9,14 @@ import { ActionSheetController, AlertController, ToastController } from '@ionic/
 export class HomePage {
   key_storage = 'taskDb';
 
-  tarefas: any[] = [
-    { name: "Estudar Ionic", done: false },
-    { name: "Estudar Inglês",  done: false},
-    { name: "Continuar Guia de Estudos",  done: false},
-  ]
+  tarefas: any[] = []; 
 
   constructor(private alertCtrl: AlertController,
               private toastCtrl: ToastController, 
               private actStCtrl: ActionSheetController) {
       let tasksJson = localStorage.getItem(this.key_storage);
-      
-      if (tasksJson!='[]'){
+
+      if (tasksJson != null && tasksJson!='[]' ){
         this.tarefas = JSON.parse(tasksJson)
       }
    }

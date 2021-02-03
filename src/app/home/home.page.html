@@ -9,6 +9,9 @@
 <ion-content [fullscreen]="true">
 
   <ion-list>
+    <ion-item *ngIf="tarefas?.length < 1">
+      <ion-label>Não há tarefas</ion-label>
+    </ion-item>
     <ion-item-sliding *ngFor="let task of tarefas ; let i = index" class="animate__animated animate__fadeInTopRight">
       <div id="{{'task' + i }}" class="">
         <ion-item>
