@@ -9,14 +9,21 @@
 <ion-content [fullscreen]="true">
 
   <ion-list>
-    <ion-item *ngIf="tarefas?.length < 1">
+    <ion-item *ngIf="processando==false && tarefas?.length < 1">
       <ion-label>Não há tarefas</ion-label>
-    </ion-item>
+    </ion-item>  
+
+    <ion-item *ngIf="processando==true">
+      <ion-label>
+        <ion-skeleton-text animated style="width: 20%"></ion-skeleton-text>
+      </ion-label>
+    </ion-item>  
+
     <ion-item-sliding *ngFor="let task of tarefas ; let i = index" class="animate__animated animate__fadeInTopRight">
       <div id="{{'task' + i }}" class="">
         <ion-item>
-          <ion-label *ngIf="!task.done">{{task.name}}</ion-label>
-          <ion-label *ngIf="task.done"><del>{{task.name}}</del></ion-label>
+          <ion-label *ngIf="!task.done">{{task.nome}}</ion-label>
+          <ion-label *ngIf="task.done"><del>{{task.nome}}</del></ion-label>
           <ion-icon slot="start" name="arrow-redo" color="danger" *ngIf="!task.done" (click)="openActions(task)">
           </ion-icon>
           <ion-icon slot="start" name="arrow-undo" color="success" *ngIf="task.done" (click)="openActions(task)">

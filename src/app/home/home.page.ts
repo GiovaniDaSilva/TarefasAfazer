@@ -1,5 +1,7 @@
+import { UtilService } from './../services/util.service';
+import { TarefasService } from './../services/tarefas.service';
 import { Component } from '@angular/core';
-import { ActionSheetController, AlertController, ToastController } from '@ionic/angular';
+import { ActionSheetController, AlertController, LoadingController, ToastController } from '@ionic/angular';
 
 @Component({
   selector: 'app-home',
@@ -9,17 +11,41 @@ import { ActionSheetController, AlertController, ToastController } from '@ionic/
 export class HomePage {
   key_storage = 'taskDb';
 
-  tarefas: any[] = []; 
+  tarefas: any[] = [];
+  processando: boolean = false;
 
   constructor(private alertCtrl: AlertController,
-              private toastCtrl: ToastController, 
-              private actStCtrl: ActionSheetController) {
-      let tasksJson = localStorage.getItem(this.key_storage);
+    private actStCtrl: ActionSheetController,
+    private tarefaSrv: TarefasService,
+    private util: UtilService,
+    private loadingCtrl: LoadingController) {
+    //let tasksJson = localStorage.getItem(this.key_storage);
 
-      if (tasksJson != null && tasksJson!='[]' ){
-        this.tarefas = JSON.parse(tasksJson)
-      }
-   }
+    //if (tasksJson != null && tasksJson!='[]' ){
+    // this.tarefas = JSON.parse(tasksJson)
+    //}
+    this.CarregarTarefas();
+  }
+
+
+  async CarregarTarefas() {
+    this.processando = true;
+    let loading = await this.loadingCtrl.create({ message: 'Carregando atividades.' })
+    loading.present()
+    this.tarefaSrv.list()
+      .then(async (resposta: any[]) => {
+        loading.dismiss();
+        this.tarefas = resposta;
+        console.table(resposta);
+        this.processando = false;
+      })
+      .catch(async (erro) => {
+        loading.dismiss();
+        this.util.showToast('Operação falhou');
+        console.error(erro)
+        this.processando = false;
+      })
+  }
 
   async novaTarefa() {
     const alert = await this.alertCtrl.create({
@@ -56,19 +82,32 @@ export class HomePage {
 
     //Valida se preencheu a task
     if (newTask.trim().length < 1) {
-      const toast = await this.toastCtrl.create({
-        message: 'Informe o que deseja fazer!',
-        duration: 2000,
-        position: 'top'
-      })
-      toast.present();
+      this.util.showToast('Informe o que deseja fazer!');
       return
     }
 
-    let task = { name: newTask, done: false}
-    this.tarefas.push(task)
 
-    this.updateLocalStorege();
+
+    this.util.showLoading();
+
+    this.tarefaSrv.adicionar(newTask)
+      .then(async (resposta) => {
+        this.util.hideLoad();
+        this.util.showToast('Operação realizada com sucesso.');
+
+        //let task = { nome: newTask, done: false }
+        //this.tarefas.push(task)
+
+        this.CarregarTarefas();
+        console.log(resposta)
+      })
+      .catch(async (erro) => {
+
+        this.util.showToast('Operação falhou.');
+        this.util.hideLoad();
+        console.error(erro)
+      })
+    // this.updateLocalStorege();
   }
 
   showAdd() {
@@ -76,21 +115,60 @@ export class HomePage {
     this.novaTarefa()
   }
 
-  removeTask(task : any, id :any) {        
-    document.getElementById('task' + id).setAttribute("class", "animate__animated animate__fadeOutDown");  
-    //Necessário um timer antes de remover da lista, para dar o tempo da animação da div
-    let time =  setTimeout(() => {
-      this.tarefas = this.tarefas.filter(taskArray=> taskArray != task)
-      this.updateLocalStorege()
-    }, 500)
+  async removeTask(task: any, id: any) {
+
+    const alert = await this.alertCtrl.create({
+      cssClass: 'my-custom-class',
+      header: 'Confirma',
+      message: 'Deseja Excluir?',
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+          cssClass: 'secondary',
+          handler: (blah) => {
+            console.log('Confirm Cancel: blah');
+
+          }
+        }, {
+          text: 'Ok',
+          handler: () => {
+            //this.updateLocalStorege()
+            this.util.showLoading();
+            this.tarefaSrv.delete(task.id)
+              .then(async (resposta) => {
+                console.log(resposta)
+                //this.CarregarTarefas();
+                this.util.hideLoad();
+
+
+                document.getElementById('task' + id).setAttribute("class", "animate__animated animate__fadeOutDown");
+                let time = setTimeout(() => {
+                  this.tarefas = this.tarefas.filter(taskArray => taskArray != task)
+                }, 1000)
+
+              })
+              .catch(async (erro) => {
+                this.util.hideLoad();
+                this.util.showToast('Operação falhou.')
+                console.error(erro)
+              })
+
+
+          }
+        }
+      ]
+    });
+
+    await alert.present();
 
   }
 
-  updateLocalStorege(){
+  updateLocalStorege() {
     localStorage.setItem(this.key_storage, JSON.stringify(this.tarefas));
   }
 
-  openActions(task){
+  openActions(task) {
     console.log(task)
     this.presentActionSheet(task)
   }
@@ -100,11 +178,25 @@ export class HomePage {
       header: 'O que deseja fazer?',
       cssClass: 'my-custom-class',
       buttons: [{
-        text: task.done ? 'Desmarcar' : 'Marcar' ,        
-        icon: task.done ?  'arrow-redo': 'arrow-undo' ,
+        text: task.done ? 'Desmarcar' : 'Marcar',
+        icon: task.done ? 'arrow-redo' : 'arrow-undo',
         handler: () => {
           task.done = !task.done
-          this.updateLocalStorege();
+          this.util.showLoading();
+          this.tarefaSrv.atualizar(task)
+            .then(async (resposta) => {
+              this.util.showToast('Operação realizada com sucesso.');
+              this.util.hideLoad();
+              this.CarregarTarefas();
+              console.log(resposta)
+            })
+            .catch(async (erro) => {
+              this.util.hideLoad();
+              this.util.showToast('Operação falhou.');
+              console.error(erro)
+            })
+
+          //this.updateLocalStorege();
         }
       }, {
         text: 'Cancelar',
